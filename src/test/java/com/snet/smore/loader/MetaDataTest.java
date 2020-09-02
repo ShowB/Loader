@@ -4,6 +4,7 @@ import com.snet.smore.common.domain.DbInfo;
 import com.snet.smore.common.util.DbUtil;
 import com.snet.smore.common.util.EnvManager;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.sql.Connection;
@@ -14,6 +15,7 @@ import java.sql.SQLException;
 @Slf4j
 public class MetaDataTest {
     @Test
+    @Ignore
     public void test() {
         String url = EnvManager.getProperty("loader.target.db.url");
 

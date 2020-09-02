@@ -5,6 +5,7 @@ import com.snet.smore.common.domain.DbInfo;
 import com.snet.smore.common.util.DbUtil;
 import com.snet.smore.common.util.EnvManager;
 import com.snet.smore.common.util.StringUtil;
+import com.snet.smore.loader.domain.DefaultValue;
 import com.snet.smore.loader.domain.InsertInfo;
 import com.snet.smore.loader.main.LoaderMain;
 import lombok.extern.slf4j.Slf4j;
@@ -41,13 +42,7 @@ public class InsertUtil {
             queue.add(ListCollection.LOAD_QUEUE.remove());
         }
 
-        Map<String, List<Map<String, Object>>> devidedMap = divideListByTable(queue);
-        queue.clear();
-
-        for (Map.Entry<String, List<Map<String, Object>>> next : devidedMap.entrySet()) {
-            insertBatch(next.getKey(), next.getValue());
-        }
-        devidedMap.clear();
+        insertBatch(queue);
 
         if (ListCollection.LOAD_QUEUE.size() < 1) {
             synchronized (LoaderMain.isLoadRunning) {
@@ -71,7 +66,7 @@ public class InsertUtil {
             LoaderMain.isSecondaryLoadRunning = true;
         }
 
-        Queue<Map<String, List<Map<String, Object>>>> queue = new LinkedList<>();
+        Queue<JSONObject> queue = new LinkedList<>();
 
         for (int i = 0; i < commitSize; i++) {
             if (ListCollection.ERROR_QUEUE.size() < 1)
@@ -80,11 +75,7 @@ public class InsertUtil {
             queue.add(ListCollection.ERROR_QUEUE.remove());
         }
 
-        for (Map<String, List<Map<String, Object>>> map : queue) {
-            for (Map.Entry<String, List<Map<String, Object>>> next : map.entrySet()) {
-                insertOneByOne(next.getKey(), next.getValue());
-            }
-        }
+        insertOneByOne(queue);
         queue.clear();
 
         if (ListCollection.ERROR_QUEUE.size() < 1) {
@@ -94,7 +85,7 @@ public class InsertUtil {
         }
     }
 
-    private static void insertBatch(String tableName, List<Map<String, Object>> rows) {
+    private static void insertBatch(Queue<JSONObject> rows) {
         String url = EnvManager.getProperty("loader.target.db.url");
 
         DbInfo dbInfo = new DbInfo();
@@ -103,117 +94,145 @@ public class InsertUtil {
         dbInfo.setPassword(EnvManager.getProperty("loader.target.db.password"));
         dbInfo.setUrl(url);
 
-        Connection conn = DbUtil.getConnection(dbInfo);
+        String tableName = EnvManager.getProperty("loader.target.db.table-name");
 
-        InsertInfo insertInfo = getColumnsAndQuery(conn, url, tableName);
+        Connection conn;
+        synchronized (conn = DbUtil.getConnection(dbInfo)) {
 
-        int i;
-        try (PreparedStatement pstmt = conn.prepareStatement(insertInfo.getQuery())) {
+            InsertInfo insertInfo = getColumnsAndQuery(conn, url, tableName);
 
-            for (Map<String, Object> row : rows) {
-                i = 1;
-
-                for (String key : insertInfo.getColumns()) {
-                    if ("LOADDT".equals(key))
-                        continue;
-                    else
-                        pstmt.setObject(i, row.get(key));
-
-                    i++;
-                }
-
-                pstmt.addBatch();
-//                pstmt.clearParameters();
-            }
-
-            int[] results = pstmt.executeBatch();
-
-            int result = 0;
-            for (int r : results) {
-                result += r;
-            }
-
-            log.info("[{}] rows have successfully inserted into [{}] : remained queue size = {}", result, tableName, ListCollection.LOAD_QUEUE.size());
-
-        } catch (SQLException e) {
-            Map<String, List<Map<String, Object>>> errorMap = new HashMap<>();
-            errorMap.put(tableName, rows);
-
-            ListCollection.ERROR_QUEUE.add(errorMap);
-
-            log.info("[{}] rows have occurred error while batch inserting. " +
-                            "Secondary insert will be started for these records."
-                    , rows.size());
-//            log.error("An error occurred while connecting database.", e);
-        }
-    }
-
-    private static void insertOneByOne(String tableName, List<Map<String, Object>> rows) {
-        String url = EnvManager.getProperty("loader.target.db.url");
-
-        DbInfo dbInfo = new DbInfo();
-
-        dbInfo.setUsername(EnvManager.getProperty("loader.target.db.username"));
-        dbInfo.setPassword(EnvManager.getProperty("loader.target.db.password"));
-        dbInfo.setUrl(url);
-
-        Connection conn = DbUtil.getConnection(dbInfo);
-
-        InsertInfo insertInfo = getColumnsAndQuery(conn, url, tableName);
-
-        int i;
-        int result = 0;
-        for (Map<String, Object> row : rows) {
+            int i;
             try (PreparedStatement pstmt = conn.prepareStatement(insertInfo.getQuery())) {
-                i = 1;
 
-                for (String key : insertInfo.getColumns()) {
-                    if ("LOADDT".equals(key))
-                        continue;
-                    else
-                        pstmt.setObject(i, row.get(key));
+                boolean isSetDefaultValue = false;
+                for (JSONObject row : rows) {
+                    i = 1;
 
-                    i++;
+                    for (String key : insertInfo.getColumns()) {
+                        if (LoaderMain.defaultValues.size() > 0) {
+                            for (DefaultValue d : LoaderMain.defaultValues) {
+                                if (d.getKey().equalsIgnoreCase(key)) {
+                                    isSetDefaultValue = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (isSetDefaultValue) {
+                            isSetDefaultValue = false;
+                            continue;
+                        } else {
+                            pstmt.setObject(i, row.get(key));
+                        }
+
+                        i++;
+                    }
+
+                    pstmt.addBatch();
+                    pstmt.clearParameters();
                 }
 
-                result += pstmt.executeUpdate();
-//                pstmt.clearParameters();
+                int[] results = pstmt.executeBatch();
+
+                int result = 0;
+                for (int r : results) {
+                    result += r;
+                }
+
+                conn.commit();
+                log.info("[{}] rows have successfully inserted into [{}] : remained queue size = {}", result, tableName, ListCollection.LOAD_QUEUE.size());
+                LoaderMain.success += result;
 
             } catch (SQLException e) {
-                log.error("An error occurred while inserting to [{}]. {}", tableName, e.getMessage());
+                try {
+                    conn.rollback();
+                } catch (Exception ex) {
+                    log.error("An error occurred while rolling back transaction.", e);
+                }
+
+                ListCollection.ERROR_QUEUE.addAll(rows);
+
+                log.info("[{}] rows have occurred error while batch inserting. " +
+                                "Secondary insert will be started for these records."
+                        , rows.size());
             }
         }
-
-        if (result > 0)
-            log.info("[{}] rows have successfully inserted into [{}] ... by Secondary Insert : remained queue size = {}"
-                    , result, tableName, ListCollection.ERROR_QUEUE.size());
     }
 
-    private static Map<String, List<Map<String, Object>>> divideListByTable(Queue<JSONObject> queue) {
-        Iterator it;
-        String key;
+    private static void insertOneByOne(Queue<JSONObject> rows) {
+        String url = EnvManager.getProperty("loader.target.db.url");
 
-        Map<String, List<Map<String, Object>>> map = new HashMap<>();
-        for (JSONObject json : queue) {
-            it = json.keySet().iterator();
+        DbInfo dbInfo = new DbInfo();
 
-            while (it.hasNext()) {
-                key = (String) it.next();
-                if (map.get(key) == null)
-                    map.put(key, new LinkedList<>());
+        dbInfo.setUsername(EnvManager.getProperty("loader.target.db.username"));
+        dbInfo.setPassword(EnvManager.getProperty("loader.target.db.password"));
+        dbInfo.setUrl(url);
+
+        String tableName = EnvManager.getProperty("loader.target.db.table-name");
+
+        Connection conn;
+        synchronized (conn = DbUtil.getConnection(dbInfo)) {
+
+            InsertInfo insertInfo = getColumnsAndQuery(conn, url, tableName);
+
+            int i;
+            int result = 0;
+            boolean isSetDefaultValue = false;
+
+            for (JSONObject row : rows) {
+                try (PreparedStatement pstmt = conn.prepareStatement(insertInfo.getQuery())) {
+                    i = 1;
+
+                    for (String key : insertInfo.getColumns()) {
+                        if (LoaderMain.defaultValues.size() > 0) {
+                            for (DefaultValue d : LoaderMain.defaultValues) {
+                                if (d.getKey().equalsIgnoreCase(key)) {
+                                    isSetDefaultValue = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (isSetDefaultValue) {
+                            isSetDefaultValue = false;
+                            continue;
+                        } else {
+                            pstmt.setObject(i, row.get(key));
+                        }
 
 
-                map.get(key).add((Map<String, Object>) json.get(key));
+                        i++;
+                    }
+
+                    result += pstmt.executeUpdate();
+                    pstmt.clearParameters();
+
+                    conn.commit();
+
+                } catch (Exception e) {
+                    try {
+                        conn.rollback();
+                    } catch (Exception ex) {
+                        log.error("An error occurred while rolling back transaction.", e);
+                    }
+                    log.error("An error occurred while inserting to [{}]. {}", tableName, e.getMessage());
+                    LoaderMain.error++;
+                }
             }
+
+            if (result > 0)
+                log.info("[{}] rows have successfully inserted into [{}] ... by Secondary Insert : remained queue size = {}"
+                        , result, tableName, ListCollection.ERROR_QUEUE.size());
+
+            LoaderMain.success += result;
 
         }
 
-        return map;
     }
 
     private static InsertInfo getColumnsAndQuery(Connection conn, String url, String tableName) {
         InsertInfo info = new InsertInfo();
-        List<String> columns = new LinkedList<>();
+        List<String> columns = new ArrayList<>();
 
         String catalog;
         try {
@@ -250,11 +269,29 @@ public class InsertUtil {
 
         query.append(") VALUES (").append(Constant.LINE_SEPARATOR);
 
+        boolean isSetDefaultValue = false;
         for (int i = 0; i < columns.size(); i++) {
-            if ("LOADDT".equals(columns.get(i)))
-                query.append("DATE_FORMAT(CURRENT_TIMESTAMP, '%Y%m%d %H:%i:%s')");
-            else
+            if (LoaderMain.defaultValues.size() > 0) {
+                for (DefaultValue d : LoaderMain.defaultValues) {
+                    if (d.getKey().equalsIgnoreCase(columns.get(i))) {
+                        query.append(d.getValue());
+                        isSetDefaultValue = true;
+                        break;
+                    }
+                }
+            }
+
+            if (isSetDefaultValue) {
+                isSetDefaultValue = false;
+                continue;
+            } else {
                 query.append("?");
+            }
+
+//            if ("LOADDT".equals(columns.get(i)))
+//                query.append("DATE_FORMAT(CURRENT_TIMESTAMP, '%Y%m%d %H:%i:%s')");
+//            else
+//                query.append("?");
 
             if (i < columns.size() - 1)
                 query.append(Constant.LINE_SEPARATOR).append(", ");

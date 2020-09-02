@@ -47,7 +47,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.snet.smore.transformer.main.TransformerMain</mainClass>
+                            <mainClass>com.snet.smore.loader.main.LoaderMain</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
