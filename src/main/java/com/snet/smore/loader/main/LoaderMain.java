@@ -68,7 +68,6 @@ public class LoaderMain {
         final Agent agent = AgentUtil.getAgent(agentType, agentName);
 
         if (!Constant.YN_Y.equalsIgnoreCase(agent.getUseYn())) {
-            log.info("Agent: [{}:{}] is now sleeping ... [{} + {} = {}]", agentType, agentName, success, error, (success + error));
             return;
         }
 

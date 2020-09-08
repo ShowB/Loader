@@ -75,7 +75,14 @@ public class DbInsertExecutor implements Callable<String> {
 
                     b = buffer.get();
 
-                    if (b == '[' && stack.size() == 0) {
+                    if (b == '['
+                            && stack.size() == 0) {
+                        b = buffer.get();
+                    }
+
+                    if (b == ']'
+                            && stack.size() == 0
+                            && buffer.position() + 1 < buffer.limit()) {
                         b = buffer.get();
                     }
 
@@ -175,7 +182,10 @@ public class DbInsertExecutor implements Callable<String> {
         }
 
         try {
-            path = FileUtil.changeFileStatus(path, FileStatusPrefix.COMPLETE);
+            if ("remove".equalsIgnoreCase(EnvManager.getProperty("loader.source.file.retention")))
+                Files.delete(path);
+            else
+                path = FileUtil.changeFileStatus(path, FileStatusPrefix.COMPLETE);
         } catch (IOException e) {
             log.error("An error occurred while renaming file name. {}", path, e);
         }

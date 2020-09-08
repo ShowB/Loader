@@ -2,8 +2,10 @@ package com.snet.smore.loader;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -35,5 +37,18 @@ public class JsonTest {
         System.out.println(jsonObject1.toString());
 
 
+    }
+
+
+    @Test
+    @Ignore
+    public void test2() throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+
+        String a = "{\"a\":123}, {\"b\":1234}";
+
+        JSONArray array = mapper.readValue(a, JSONArray.class);
+
+        System.out.println(array);
     }
 }

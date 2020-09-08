@@ -23,6 +23,7 @@ public class MetaDataTest {
 
         dbInfo.setUsername(EnvManager.getProperty("loader.target.db.username"));
         dbInfo.setPassword(EnvManager.getProperty("loader.target.db.password"));
+        dbInfo.setClassName(EnvManager.getProperty("loader.target.db.classname"));
         dbInfo.setUrl(url);
 
         Connection conn = DbUtil.getConnection(dbInfo);

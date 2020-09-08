@@ -94,6 +94,7 @@ public class InsertUtil {
 
         dbInfo.setUsername(EnvManager.getProperty("loader.target.db.username"));
         dbInfo.setPassword(EnvManager.getProperty("loader.target.db.password"));
+        dbInfo.setClassName(EnvManager.getProperty("loader.target.db.classname"));
         dbInfo.setUrl(url);
 
         Iterator<Map.Entry<String, List<JSONObject>>> it = jsonByTables.entrySet().iterator();
@@ -192,6 +193,7 @@ public class InsertUtil {
 
         dbInfo.setUsername(EnvManager.getProperty("loader.target.db.username"));
         dbInfo.setPassword(EnvManager.getProperty("loader.target.db.password"));
+        dbInfo.setClassName(EnvManager.getProperty("loader.target.db.classname"));
         dbInfo.setUrl(url);
 
         Iterator<Map.Entry<String, List<JSONObject>>> it = jsonByTables.entrySet().iterator();
