@@ -65,44 +65,49 @@ public class LoaderMain {
     }
 
     private static void runAgent() {
-        final Agent agent = AgentUtil.getAgent(agentType, agentName);
+        try {
+            final Agent agent = AgentUtil.getAgent(agentType, agentName);
 
-        if (!Constant.YN_Y.equalsIgnoreCase(agent.getUseYn())) {
-            return;
-        }
-
-        isRequiredPropertiesUpdate = Constant.YN_Y.equalsIgnoreCase(agent.getChangeYn());
-
-        if (isRequiredPropertiesUpdate || isFirstRun) {
-            // properties 설정값에 대한 무결성을 보장하기 위해
-            // load 작업이 진행중일 땐 새로운 read 작업을 멈춤
-            if (isLoadRunning || isSecondaryLoadRunning) {
+            if (!Constant.YN_Y.equalsIgnoreCase(agent.getUseYn())) {
                 return;
             }
 
-            EnvManager.reload();
-            agentName = EnvManager.getProperty("loader.name");
+            isRequiredPropertiesUpdate = Constant.YN_Y.equalsIgnoreCase(agent.getChangeYn());
 
-            setDefaultValues();
+            if (isRequiredPropertiesUpdate || isFirstRun) {
+                // properties 설정값에 대한 무결성을 보장하기 위해
+                // load 작업이 진행중일 땐 새로운 read 작업을 멈춤
+                if (isLoadRunning || isSecondaryLoadRunning) {
+                    return;
+                }
 
-            log.info("Environment has successfully (re)loaded.");
+                EnvManager.reload();
+                agentName = EnvManager.getProperty("loader.name");
 
-            if ("Y".equalsIgnoreCase(agent.getChangeYn()))
-                AgentUtil.setChangeYn(agentType, agentName, Constant.YN_N);
+                setDefaultValues();
 
-            isRequiredPropertiesUpdate = false;
-        }
+                log.info("Environment has successfully (re)loaded.");
 
-        LoaderMain.clearCurrCnt();
+                if ("Y".equalsIgnoreCase(agent.getChangeYn()))
+                    AgentUtil.setChangeYn(agentType, agentName, Constant.YN_N);
 
-        try {
-            DbInsertModule.execute();
+                isRequiredPropertiesUpdate = false;
+            }
+
+            LoaderMain.clearCurrCnt();
+
+            try {
+                DbInsertModule.execute();
+            } catch (Exception e) {
+                log.error("An error occurred while executing DbInsertModule.execute().", e);
+            }
+
+            if (isFirstRun)
+                isFirstRun = false;
+
         } catch (Exception e) {
-            log.error("An error occurred while executing DbInsertModule.execute().", e);
+            log.error("An error occurred while thread processing. It will be restarted : {}", e.getMessage());
         }
-
-        if (isFirstRun)
-            isFirstRun = false;
     }
 
     private static void runLoadQueue() {
@@ -110,7 +115,7 @@ public class LoaderMain {
             InsertUtil.load();
             InsertUtil.secondaryLoad();
         } catch (Exception e) {
-            log.error("An error occurred while executing load().", e);
+            log.error("An error occurred while thread processing. It will be restarted : {}", e.getMessage());
         }
     }
 
