@@ -18,7 +18,7 @@ import java.util.concurrent.Future;
 
 @Slf4j
 public class DbInsertModule {
-    public static void execute() {
+    public void execute() {
         String dirToTableValue = EnvManager.getProperty("loader.target.db.dir-to-table");
         String[] dirToTables;
 
@@ -46,7 +46,6 @@ public class DbInsertModule {
             for (Path p : targets) {
                 callables.add(new DbInsertExecutor(p, split[1]));
             }
-
         }
 
 
@@ -65,33 +64,5 @@ public class DbInsertModule {
             }
 
         }
-
-//        Path root = Paths.get(EnvManager.getProperty("loader.source.file.dir"));
-//        String glob = EnvManager.getProperty("loader.source.file.glob", "*.*");
-//        List<Path> targets = FileUtil.findFiles(root, glob);
-//
-//        if (targets.size() < 1)
-//            return;
-//
-//
-//        LoaderMain.setTotalCnt(targets.size());
-//        log.info("Target files were found: {}", LoaderMain.getTotalCnt());
-//        long start = System.currentTimeMillis();
-//
-//        ExecutorService distributeService = Executors.newFixedThreadPool(1);
-//        List<Callable<String>> callables = new ArrayList<>();
-//
-//        for (Path p : targets) {
-//            callables.add(new DbInsertExecutor(p));
-//        }
-//
-//        try {
-//            List<Future<String>> futures = distributeService.invokeAll(callables);
-//            long end = System.currentTimeMillis();
-//            log.info("{} files have been completed.", futures.size());
-//            log.info("Turn Around Time: " + ((end - start) / 1000) + " (seconds)");
-//        } catch (InterruptedException e) {
-//            log.error("An error occurred while invoking distributed thread.");
-//        }
     }
 }

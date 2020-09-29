@@ -124,8 +124,8 @@ public class InsertUtil {
                         i = 1;
 
                         for (String key : insertInfo.getColumns()) {
-                            if (LoaderMain.defaultValues.size() > 0) {
-                                for (DefaultValue d : LoaderMain.defaultValues) {
+                            if (ListCollection.DEFAULT_VALUES.size() > 0) {
+                                for (DefaultValue d : ListCollection.DEFAULT_VALUES) {
                                     if (d.getKey().equalsIgnoreCase(key)) {
                                         isSetDefaultValue = true;
                                         break;
@@ -222,8 +222,8 @@ public class InsertUtil {
                         i = 1;
 
                         for (String key : insertInfo.getColumns()) {
-                            if (LoaderMain.defaultValues.size() > 0) {
-                                for (DefaultValue d : LoaderMain.defaultValues) {
+                            if (ListCollection.DEFAULT_VALUES.size() > 0) {
+                                for (DefaultValue d : ListCollection.DEFAULT_VALUES) {
                                     if (d.getKey().equalsIgnoreCase(key)) {
                                         isSetDefaultValue = true;
                                         break;
@@ -310,8 +310,8 @@ public class InsertUtil {
 
         boolean isSetDefaultValue = false;
         for (int i = 0; i < columns.size(); i++) {
-            if (LoaderMain.defaultValues.size() > 0) {
-                for (DefaultValue d : LoaderMain.defaultValues) {
+            if (ListCollection.DEFAULT_VALUES.size() > 0) {
+                for (DefaultValue d : ListCollection.DEFAULT_VALUES) {
                     if (d.getKey().equalsIgnoreCase(columns.get(i))) {
                         query.append(d.getValue());
                         isSetDefaultValue = true;
