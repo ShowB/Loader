@@ -8,20 +8,22 @@ import com.snet.smore.common.constant.FileStatusPrefix;
 import com.snet.smore.common.util.EnvManager;
 import com.snet.smore.common.util.FileUtil;
 import com.snet.smore.loader.main.LoaderMain;
-import com.snet.smore.loader.module.DbInsertModule;
 import com.snet.smore.loader.util.ListCollection;
 import lombok.extern.slf4j.Slf4j;
 import org.json.simple.JSONObject;
 
-import java.io.*;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
-import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Stack;
 import java.util.concurrent.Callable;
 
 @Slf4j
@@ -113,6 +115,8 @@ public class DbInsertExecutor implements Callable<String> {
                     }
                 }
 
+                buffer.clear();
+
             } catch (Exception e) {
                 log.error("An error occurred while reading file. {}", path, e);
                 try {
@@ -164,10 +168,6 @@ public class DbInsertExecutor implements Callable<String> {
 
                     lineCnt++;
                 }
-
-                csvReader.close();
-                isr.close();
-                fis.close();
 
             } catch (Exception e) {
                 log.error("An error occurred while reading file. {}", path, e);
