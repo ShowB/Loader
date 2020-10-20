@@ -7,6 +7,8 @@ import com.snet.smore.common.util.EnvManager;
 import com.snet.smore.common.util.StringUtil;
 import com.snet.smore.loader.domain.DefaultValue;
 import com.snet.smore.loader.module.DbInsertModule;
+import com.snet.smore.loader.module.FTPSendModule;
+import com.snet.smore.loader.module.SFTPSendModule;
 import com.snet.smore.loader.util.InsertUtil;
 import com.snet.smore.loader.util.ListCollection;
 import lombok.extern.slf4j.Slf4j;
@@ -98,7 +100,18 @@ public class LoaderMain {
             LoaderMain.clearCurrCnt();
 
             if (clazz == null) {
-                clazz = DbInsertModule.class;
+                String type = EnvManager.getProperty("loader.mode");
+
+                if ("DB".equalsIgnoreCase(type)) {
+                    clazz = DbInsertModule.class;
+                } else if ("FTP".equalsIgnoreCase(type)) {
+                    clazz = FTPSendModule.class;
+                } else if ("SFTP".equalsIgnoreCase(type)) {
+                    clazz = SFTPSendModule.class;
+                } else {
+                    log.error("Cannot convert value [{}]. Thread will be restarted.", "loader.mode");
+                    return;
+                }
             }
 
             if (instance == null) {

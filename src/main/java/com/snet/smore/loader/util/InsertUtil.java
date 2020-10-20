@@ -103,8 +103,6 @@ public class InsertUtil {
         List<JSONObject> jsons;
         int result = 0;
 
-//        String tableName = EnvManager.getProperty("loader.target.db.table-name");
-
         Connection conn;
         synchronized (conn = DbUtil.getConnection(dbInfo)) {
             while (it.hasNext()) {
@@ -153,10 +151,6 @@ public class InsertUtil {
                         result += r;
                     }
 
-//                    conn.commit();
-//                    log.info("[{}] rows have successfully inserted into [{}] : remained queue size = {}", result, tableName, ListCollection.LOAD_QUEUE.size());
-//                    LoaderMain.success += result;
-
                 } catch (SQLException e) {
                     try {
                         conn.rollback();
@@ -201,8 +195,6 @@ public class InsertUtil {
         String tableName;
         List<JSONObject> jsons;
         int result = 0;
-
-//        String tableName = EnvManager.getProperty("loader.target.db.table-name");
 
         Connection conn;
         synchronized (conn = DbUtil.getConnection(dbInfo)) {
@@ -327,11 +319,6 @@ public class InsertUtil {
                 query.append("?");
             }
 
-//            if ("LOADDT".equals(columns.get(i)))
-//                query.append("DATE_FORMAT(CURRENT_TIMESTAMP, '%Y%m%d %H:%i:%s')");
-//            else
-//                query.append("?");
-
             if (i < columns.size() - 1)
                 query.append(Constant.LINE_SEPARATOR).append(", ");
         }
@@ -345,30 +332,17 @@ public class InsertUtil {
     }
 
     private static JSONObject categorizingByTableName(Queue<JSONObject> queue) {
-//        Iterator it;
-//        String key;
-
         JSONObject resultJson = new JSONObject();
 
         String tableNm;
         for (JSONObject j : queue) {
-            tableNm = (String) j.get("smore_table_nm");
+            tableNm = (String) j.get(Constant.COMMON_COLUMN_SMORE_TABLE_NM);
 
             if (resultJson.get(tableNm) == null)
                 resultJson.put(tableNm, new ArrayList<>());
 
             ((List) resultJson.get(tableNm)).add(j);
 
-//            it = j.keySet().iterator();
-//
-//            while (it.hasNext()) {
-//                key = (String) it.next();
-//
-//                if (resultJson.get("key") == null)
-//                    resultJson.put(key, new ArrayList<>());
-//
-//                ((List) resultJson.get(key)).add(j.get(key));
-//            }
         }
 
         return resultJson;
